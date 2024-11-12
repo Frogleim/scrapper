@@ -5,9 +5,9 @@ from psycopg2 import sql
 DB_CONFIG = {
     "dbname": "postgres",
     "user": "postgres",
-    "password": "admin",
+    "password": "postgres",
     "host": "localhost",
-    "port": "5433"
+    "port": "5432"
 }
 
 
@@ -60,6 +60,7 @@ def clean_value(value):
         # If conversion fails, return the cleaned string
         return value
 
+
 def insert_data(data):
     connection = psycopg2.connect(**DB_CONFIG)
     cursor = connection.cursor()
@@ -85,37 +86,60 @@ def insert_data(data):
                     'Parkeren': data.get('Parkeren', None), 'Website/bron': data.get('Website/bron', None),
                     state_table: data.get('Status', None)}
 
-    # Add the dynamically generated column value to the cleaned_data dictionary
-
     try:
-        # SQL query to insert data into the realty_data table
-        insert_query = sql.SQL("""
-            INSERT INTO realty_data (
-                "index", "Plaats", "Segment", "Project", "Bouwnummer", "Aantal kamers", "Prijs", 
-                "Woonoppervlakte", "Buitenruimte type JA/NEE", "Oppervlakte buitenruimte", 
-                "Verdieping", "Inclusief erfpacht prijs", "Meubileringkosten", "Orientatie", 
-                "Servicekosten", "Parkeren", "Website/bron", {column_name}
-            ) VALUES (
-                %(index)s, %(Plaats)s, %(Segment)s, %(Project)s, %(Bouwnummer)s, %(Aantal kamers)s, %(Prijs)s, 
-                %(Woonoppervlakte)s, %(Buitenruimte type JA/NEE)s, %(Oppervlakte buitenruimte)s, 
-                %(Verdieping)s, %(Inclusief erfpacht prijs)s, %(Meubileringkosten)s, %(Orientatie)s, 
-                %(Servicekosten)s, %(Parkeren)s, %(Website/bron)s, %({column_name})s
-            )
-        """).format(column_name=sql.SQL(state_table))
+        # Check if the index already exists in the table
+        check_exists_query = sql.SQL("""
+            SELECT 1 FROM realty_data WHERE "index" = %s
+        """)
+        cursor.execute(check_exists_query, (cleaned_data['index'],))
+        result = cursor.fetchone()
 
-        # Execute the insert query with the cleaned data
-        cursor.execute(insert_query, cleaned_data)
+        if result:
+            # If the record exists, perform an UPDATE
+            update_query = sql.SQL("""
+                UPDATE realty_data SET
+                    "Plaats" = %(Plaats)s, "Segment" = %(Segment)s, "Project" = %(Project)s,
+                    "Bouwnummer" = %(Bouwnummer)s, "Aantal kamers" = %(Aantal kamers)s, "Prijs" = %(Prijs)s,
+                    "Woonoppervlakte" = %(Woonoppervlakte)s, "Buitenruimte type JA/NEE" = %(Buitenruimte type JA/NEE)s,
+                    "Oppervlakte buitenruimte" = %(Oppervlakte buitenruimte)s, "Verdieping" = %(Verdieping)s,
+                    "Inclusief erfpacht prijs" = %(Inclusief erfpacht prijs)s, "Meubileringkosten" = %(Meubileringkosten)s,
+                    "Orientatie" = %(Orientatie)s, "Servicekosten" = %(Servicekosten)s, "Parkeren" = %(Parkeren)s,
+                    "Website/bron" = %(Website/bron)s, {column_name} = %({column_name})s
+                WHERE "index" = %(index)s
+            """).format(column_name=sql.SQL(state_table))
+
+            cursor.execute(update_query, cleaned_data)
+            print(f"Record with index {cleaned_data['index']} updated successfully.")
+        else:
+            # If the record doesn't exist, perform an INSERT
+            insert_query = sql.SQL("""
+                INSERT INTO realty_data (
+                    "index", "Plaats", "Segment", "Project", "Bouwnummer", "Aantal kamers", "Prijs", 
+                    "Woonoppervlakte", "Buitenruimte type JA/NEE", "Oppervlakte buitenruimte", 
+                    "Verdieping", "Inclusief erfpacht prijs", "Meubileringkosten", "Orientatie", 
+                    "Servicekosten", "Parkeren", "Website/bron", {column_name}
+                ) VALUES (
+                    %(index)s, %(Plaats)s, %(Segment)s, %(Project)s, %(Bouwnummer)s, %(Aantal kamers)s, %(Prijs)s, 
+                    %(Woonoppervlakte)s, %(Buitenruimte type JA/NEE)s, %(Oppervlakte buitenruimte)s, 
+                    %(Verdieping)s, %(Inclusief erfpacht prijs)s, %(Meubileringkosten)s, %(Orientatie)s, 
+                    %(Servicekosten)s, %(Parkeren)s, %(Website/bron)s, %({column_name})s
+                )
+            """).format(column_name=sql.SQL(state_table))
+
+            cursor.execute(insert_query, cleaned_data)
+            print(f"Record with index {cleaned_data['index']} inserted successfully.")
+
+        # Commit the transaction
         connection.commit()
 
     except psycopg2.Error as e:
-        print('Insert data error:', e)
+        print('Error inserting/updating data:', e)
         connection.rollback()
 
     finally:
         # Close the cursor and connection
         cursor.close()
         connection.close()
-
 
 
 def get_columns_sorted_by_creation(table_name):
@@ -157,7 +181,7 @@ if __name__ == '__main__':
         "Berging": "5.45 m2",
         "Energielabel": "A+++",
         "Buitenruimte type JA/NEE": "JA",
-        "index": "AMST-G1"
+        "index": "AMST-X1"
     }
     table_name = "realty_data"
     insert_data(data)
