@@ -22,6 +22,8 @@ soup = BS(r.content, 'html.parser')
 rows = soup.find_all('div', class_='row')
 woningurls = [row.get("data-woningurl") for row in rows if row.get("data-woningurl")]
 i = 0
+data_dict = {}
+
 for woningurl in woningurls:
     if 'woning' in woningurl:  # Check if the URL is valid
         i += 1
@@ -32,7 +34,6 @@ for woningurl in woningurls:
             table = appartment_soup.find('table', class_='specificatietabel')
 
             if table:
-                data_dict = {}
                 for cell in table.find_all('td'):
                     key = cell.find('b').text.strip() if cell.find('b') else ''
                     value = cell.text.replace(key, '').strip()
@@ -44,7 +45,9 @@ for woningurl in woningurls:
                 data_dict['index'] = f"AMST-{data_dict['Woningtype']}"
                 data_dict['segment'] = 'Huur'
                 data_dict['Website/bron'] = 'https://thepulse-living.nl/woning'
+                data_dict['Verdieping'] = str(data_dict['Verdieping']) if data_dict['Verdieping'] else "0"
                 insert_data(data_dict)
+
                 run()
 
                 print(json.dumps(data_dict, ensure_ascii=False, indent=4))
@@ -52,6 +55,7 @@ for woningurl in woningurls:
                 print(f"Table not found for {woningurl}")
 
         except Exception as e:
+            data_dict['Verdieping'] = "0"
             print(f"Error processing {woningurl}: {e}")
 
 # Save the data to a JSON file
