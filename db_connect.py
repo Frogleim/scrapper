@@ -10,6 +10,7 @@ DB_CONFIG = {
     "port": "5433"
 }
 
+
 def add_current_status():
     # Generate the column name based on today's date
     current_time = datetime.now().strftime("%Y_%m_%d")
@@ -42,38 +43,80 @@ def add_current_status():
         connection.close()
 
 
+def clean_value(value):
+    """
+    Function to clean the values by removing unwanted suffixes such as 'm2' and 'p/mnd'.
+    It also ensures that the value can be converted to appropriate types like float or int.
+    """
+    # Remove 'm2' and 'p/mnd' and any leading/trailing spaces
+    if isinstance(value, str):
+        value = value.replace('m2', '').replace('p/mnd', '').strip()
+
+    # Try to convert the cleaned value to a float if it represents a number
+    try:
+        # Remove any extra spaces and convert to float
+        return float(value.replace('€', '').replace(',', '.')) if value else None
+    except ValueError:
+        # If conversion fails, return the cleaned string
+        return value
+
 def insert_data(data):
     connection = psycopg2.connect(**DB_CONFIG)
     cursor = connection.cursor()
     add_current_status()
-    current_time = datetime.now().strftime("%Y_%m_%d")
-    state_table = f'state_for_{current_time}'
-    try:
 
-        # Create the insert query with dynamic column name
+    # Get the current date for the state table
+    current_time = datetime.now().strftime("%Y_%m_%d")
+    state_table = f'state_for_{current_time}'  # Generate the state table name dynamically
+
+    # Cleaned data with default for 'Buitenruimte type(JA/NEE)'
+    cleaned_data = {'index': data.get('index', None), 'Plaats': "Amsterdam", 'Segment': 'Huur',
+                    'Project': 'AMST', 'Bouwnummer': data.get('Woningtype', None),
+                    'Aantal kamers': clean_value(data.get('Aantal kamers', None)),
+                    'Prijs': clean_value(data.get('Huurprijs', None)),
+                    'Woonoppervlakte': clean_value(data.get('Woonoppervlakte', None)),
+                    'Buitenruimte type JA/NEE': data.get('Buitenruimte type JA/NEE'),
+                    'Oppervlakte buitenruimte': clean_value(data.get('Oppervlakte buitenruimte', None)),
+                    'Verdieping': clean_value(data.get('Verdieping', None)),
+                    'Inclusief erfpacht prijs': clean_value(data.get('Inclusief erfpacht prijs', None)),
+                    'Meubileringkosten': clean_value(data.get('Meubileringkosten', None)),
+                    'Orientatie': data.get('Orientatie', None),
+                    'Servicekosten': clean_value(data.get('Servicekosten', None)),
+                    'Parkeren': data.get('Parkeren', None), 'Website/bron': data.get('Website/bron', None),
+                    state_table: data.get('Status', None)}
+
+    # Add the dynamically generated column value to the cleaned_data dictionary
+
+    try:
+        # SQL query to insert data into the realty_data table
         insert_query = sql.SQL("""
             INSERT INTO realty_data (
-                location, segment, project, building_number, rooms_numbers, 
-                price, living_area, outdoor_space_type, surface_area_of_outdoor_space, 
-                floor, leasehold_price, furnishing_cost, orientation, service_cost, 
-                parking, website, {column_name}
+                "index", "Plaats", "Segment", "Project", "Bouwnummer", "Aantal kamers", "Prijs", 
+                "Woonoppervlakte", "Buitenruimte type JA/NEE", "Oppervlakte buitenruimte", 
+                "Verdieping", "Inclusief erfpacht prijs", "Meubileringkosten", "Orientatie", 
+                "Servicekosten", "Parkeren", "Website/bron", {column_name}
             ) VALUES (
-                %(location)s, %(segment)s, %(project)s, %(building_number)s, %(rooms_numbers)s, 
-                %(price)s, %(living_area)s, %(outdoor_space_type)s, %(surface_area_of_outdoor_space)s, 
-                %(floor)s, %(leasehold_price)s, %(furnishing_cost)s, %(orientation)s, %(service_cost)s, 
-                %(parking)s, %(website)s, %({column_name})s
+                %(index)s, %(Plaats)s, %(Segment)s, %(Project)s, %(Bouwnummer)s, %(Aantal kamers)s, %(Prijs)s, 
+                %(Woonoppervlakte)s, %(Buitenruimte type JA/NEE)s, %(Oppervlakte buitenruimte)s, 
+                %(Verdieping)s, %(Inclusief erfpacht prijs)s, %(Meubileringkosten)s, %(Orientatie)s, 
+                %(Servicekosten)s, %(Parkeren)s, %(Website/bron)s, %({column_name})s
             )
         """).format(column_name=sql.SQL(state_table))
 
-        # Execute the query with the data
-        cursor.execute(insert_query, data)
+        # Execute the insert query with the cleaned data
+        cursor.execute(insert_query, cleaned_data)
         connection.commit()
+
     except psycopg2.Error as e:
-        print('Insert data error', e)
+        print('Insert data error:', e)
         connection.rollback()
+
     finally:
+        # Close the cursor and connection
         cursor.close()
         connection.close()
+
+
 
 def get_columns_sorted_by_creation(table_name):
     # Establish connection to the database
@@ -102,24 +145,19 @@ def get_columns_sorted_by_creation(table_name):
 
 if __name__ == '__main__':
     today_column_name = datetime.now().strftime("%Y_%m_%d")
-    data_dict = {
-        "location": "Amsterdam",
-        "segment": "Huur",
-        "project": "PLS",
-        "building_number": "B123",
-        "rooms_numbers": 3,
-        "price": 1500,
-        "living_area": 75,
-        "outdoor_space_type": "Balcony",
-        "surface_area_of_outdoor_space": 20,
-        "floor": 2,
-        "leasehold_price": None,
-        "furnishing_cost": None,
-        "orientation": "North",
-        "service_cost": None,
-        "parking": "Yes",
-        "website": "https://example.com",
-        f"state_for_{today_column_name}": "Segment data for today"
+    data = {
+        "Status": "Gereserveerd",
+        "Huurprijs": "€ 1805 p/mnd",
+        "Woningtype": "G1",
+        "Woonoppervlakte": "50.60 m2",
+        "Verdieping": "13",
+        "Aantal kamers": "1",
+        "Oppervlakte buitenruimte": "4.03 m2",
+        "Balkonligging": "Zuid/oost",
+        "Berging": "5.45 m2",
+        "Energielabel": "A+++",
+        "Buitenruimte type JA/NEE": "JA",
+        "index": "AMST-G1"
     }
     table_name = "realty_data"
-    get_columns_sorted_by_creation(table_name)
+    insert_data(data)
