@@ -78,7 +78,11 @@ def insert_data(data):
                     'Woonoppervlakte': clean_value(data.get('Woonoppervlakte', None)),
                     'Buitenruimte type JA/NEE': data.get('Buitenruimte type JA/NEE'),
                     'Oppervlakte buitenruimte': clean_value(data.get('Oppervlakte buitenruimte', None)),
-                    'Verdieping': clean_value(data.get('Verdieping', None)),
+                    'Verdieping': (
+                        str(int(clean_value(data.get('Verdieping', 0))))
+                        if clean_value(data.get('Verdieping', 0)) is not None and clean_value(data.get('Verdieping', 0)).is_integer()
+                        else str(clean_value(data.get('Verdieping', 0)) or '0')
+                    ),
                     'Inclusief erfpacht prijs': clean_value(data.get('Inclusief erfpacht prijs', None)),
                     'Meubileringkosten': clean_value(data.get('Meubileringkosten', None)),
                     'Orientatie': data.get('Orientatie', None),
@@ -87,11 +91,11 @@ def insert_data(data):
                     state_table: data.get('Status', None)}
 
     try:
-        # Check if the index already exists in the table
+        # Check if the record with the same index and Verdieping already exists in the table
         check_exists_query = sql.SQL("""
-            SELECT 1 FROM realty_data WHERE "index" = %s
+            SELECT 1 FROM realty_data WHERE "index" = %s AND "Verdieping" = %s
         """)
-        cursor.execute(check_exists_query, (cleaned_data['index'],))
+        cursor.execute(check_exists_query, (cleaned_data['index'], cleaned_data['Verdieping']))
         result = cursor.fetchone()
 
         if result:
@@ -101,15 +105,16 @@ def insert_data(data):
                     "Plaats" = %(Plaats)s, "Segment" = %(Segment)s, "Project" = %(Project)s,
                     "Bouwnummer" = %(Bouwnummer)s, "Aantal kamers" = %(Aantal kamers)s, "Prijs" = %(Prijs)s,
                     "Woonoppervlakte" = %(Woonoppervlakte)s, "Buitenruimte type JA/NEE" = %(Buitenruimte type JA/NEE)s,
-                    "Oppervlakte buitenruimte" = %(Oppervlakte buitenruimte)s, "Verdieping" = %(Verdieping)s,
+                    "Oppervlakte buitenruimte" = %(Oppervlakte buitenruimte)s,
                     "Inclusief erfpacht prijs" = %(Inclusief erfpacht prijs)s, "Meubileringkosten" = %(Meubileringkosten)s,
                     "Orientatie" = %(Orientatie)s, "Servicekosten" = %(Servicekosten)s, "Parkeren" = %(Parkeren)s,
                     "Website/bron" = %(Website/bron)s, {column_name} = %({column_name})s
-                WHERE "index" = %(index)s
+                WHERE "index" = %(index)s AND "Verdieping" = %(Verdieping)s
             """).format(column_name=sql.SQL(state_table))
 
             cursor.execute(update_query, cleaned_data)
-            print(f"Record with index {cleaned_data['index']} updated successfully.")
+            print(
+                f"Record with index {cleaned_data['index']} and Verdieping {cleaned_data['Verdieping']} updated successfully.")
         else:
             # If the record doesn't exist, perform an INSERT
             insert_query = sql.SQL("""
@@ -127,7 +132,8 @@ def insert_data(data):
             """).format(column_name=sql.SQL(state_table))
 
             cursor.execute(insert_query, cleaned_data)
-            print(f"Record with index {cleaned_data['index']} inserted successfully.")
+            print(
+                f"Record with index {cleaned_data['index']} and Verdieping {cleaned_data['Verdieping']} inserted successfully.")
 
         # Commit the transaction
         connection.commit()
@@ -174,7 +180,7 @@ if __name__ == '__main__':
         "Huurprijs": "€ 1805 p/mnd",
         "Woningtype": "G1",
         "Woonoppervlakte": "50.60 m2",
-        "Verdieping": "13",
+        "Verdieping": "",
         "Aantal kamers": "1",
         "Oppervlakte buitenruimte": "4.03 m2",
         "Balkonligging": "Zuid/oost",

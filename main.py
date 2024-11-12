@@ -25,6 +25,7 @@ i = 0
 for woningurl in woningurls:
     if 'woning' in woningurl:  # Check if the URL is valid
         i += 1
+        print(f'Apartment #{i}')
         try:
             appartment_request = requests.get(woningurl, headers=headers)
             appartment_soup = BS(appartment_request.text, 'html.parser')

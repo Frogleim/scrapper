@@ -5,9 +5,9 @@ import pandas as pd
 DB_CONFIG = {
     "dbname": "postgres",
     "user": "postgres",
-    "password": "admin",
+    "password": "postgres",
     "host": "localhost",
-    "port": "5433"
+    "port": "5432"
 }
 
 
