@@ -5,9 +5,9 @@ from psycopg2 import sql
 DB_CONFIG = {
     "dbname": "postgres",
     "user": "postgres",
-    "password": "postgres",
+    "password": "admin",
     "host": "localhost",
-    "port": "5432"
+    "port": "5433"
 }
 
 
@@ -78,11 +78,7 @@ def insert_data(data):
                     'Woonoppervlakte': clean_value(data.get('Woonoppervlakte', None)),
                     'Buitenruimte type JA/NEE': data.get('Buitenruimte type JA/NEE'),
                     'Oppervlakte buitenruimte': clean_value(data.get('Oppervlakte buitenruimte', None)),
-                    'Verdieping': (
-                        str(int(clean_value(data.get('Verdieping', 0))))
-                        if clean_value(data.get('Verdieping', 0)) is not None and clean_value(data.get('Verdieping', 0)).is_integer()
-                        else str(clean_value(data.get('Verdieping', 0)) or '0')
-                    ),
+                    'Verdieping': data.get('Verdieping', 0),
                     'Inclusief erfpacht prijs': clean_value(data.get('Inclusief erfpacht prijs', None)),
                     'Meubileringkosten': clean_value(data.get('Meubileringkosten', None)),
                     'Orientatie': data.get('Orientatie', None),
