@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup as BS
 import json
-import pandas as pd
 import re
 from db_connect import insert_data
 from save_excel import run
@@ -21,10 +20,21 @@ soup = BS(r.content, 'html.parser')
 rows = soup.find_all('div', class_='row')
 woningurls = [row.get("data-woningurl") for row in rows if row.get("data-woningurl")]
 i = 0
-
+print(len(woningurls))
 for woningurl in woningurls:
     if 'woning' in woningurl:  # Check if the URL is valid
         i += 1
+        print(woningurl)
+
+        # Check if regex matches before accessing group(1)
+        match = re.search(r"-([0-9]+)/?$", woningurl)
+        if match:
+            number = match.group(1)
+            print(number)
+        else:
+            print(f"No number found in URL: {woningurl}")
+            continue  # Skip this woningurl if no match is found
+
         print(f'Apartment #{i}')
 
         # Reset data_dict for each apartment
@@ -44,6 +54,7 @@ for woningurl in woningurls:
                         data_dict[key] = value
 
                 # Add custom fields
+                data_dict['number'] = number
                 data_dict['index'] = f"AMST-{data_dict.get('Woningtype', '')}"
                 data_dict["Buitenruimte type JA/NEE"] = "JA" if "Oppervlakte buitenruimte" in data_dict else "NEE"
 
